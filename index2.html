@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Defragmentation Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f6;--card:#fff;--tx:#1b1f1d;--mu:#69716d;--bd:#dfe4e1;--ac:#2f8f7b;--empty:#e9ecea;--hi:#1b1f1d}
+@media (prefers-color-scheme:dark){:root{--bg:#141716;--card:#1c201f;--tx:#e8ecea;--mu:#8d9793;--bd:#2c3230;--ac:#5fd0b6;--empty:#262b29;--hi:#fff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 Inter,sans-serif;padding:32px 20px}
+.w{max-width:1080px;margin:0 auto}
+h1{font-size:30px;margin:0 0 6px}
+.sub{color:var(--mu);margin:0 0 24px;max-width:72ch}
+.cd{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:18px;margin-bottom:20px}
+h2{font-size:15px;margin:0 0 12px}
+.al{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.al button{padding:10px;text-align:left}
+.al button.on{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 14%,transparent)}
+.al small{display:block;color:var(--mu);font-weight:400;font-size:12px}
+.ds{color:var(--mu);margin:12px 0 0;font-size:14px}
+button{padding:10px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:600 14px Inter;cursor:pointer}
+button.pr{background:var(--ac);border-color:var(--ac);color:#fff}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.bt{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.bt label{display:flex;gap:8px;align-items:center;color:var(--mu);font-size:13px;margin-left:auto}
+input[type=range]{accent-color:var(--ac)}
+.dk{display:grid;grid-template-columns:repeat(20,1fr);gap:4px}
+.b{aspect-ratio:1;border-radius:5px;background:var(--empty);display:flex;align-items:center;justify-content:center;font:600 11px 'IBM Plex Mono',monospace;color:#1b1f1d}
+.b.hi{outline:2px solid var(--hi);outline-offset:1px}
+.pg{height:6px;background:var(--empty);border-radius:3px;margin-top:14px;overflow:hidden}
+.pg div{height:100%;width:0;background:var(--ac);transition:width .15s}
+.g{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:700px){.g{grid-template-columns:repeat(2,1fr)}}
+.g div{border:1px solid var(--bd);border-radius:10px;padding:8px 12px}
+.g small{color:var(--mu);font-size:12px;display:block}
+.g b{font:600 22px 'IBM Plex Mono',monospace}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--bd)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mu);font-weight:500;font-size:13px}
+.fl{display:flex;flex-wrap:wrap;gap:8px}
+.fl span{border:1px solid var(--bd);border-left-width:5px;border-radius:8px;padding:4px 10px;font-size:13px}
+.fl i{font:normal 12px 'IBM Plex Mono',monospace;color:var(--mu)}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>Defragmentation Simulator</h1>
+<p class="sub">ดิสก์ 120 block ที่มีไฟล์แตกเป็นชิ้น ๆ เลือกอัลกอริทึมจัดเรียงแล้วดูการย้าย block ทีละขั้น พร้อมเทียบจำนวนการเขียนและผลลัพธ์ของแต่ละวิธี</p>
+
+<div class="cd"><h2>อัลกอริทึม</h2>
+<div class="al" id="al"></div>
+<p class="ds" id="ds"></p>
+<div class="bt">
+<button class="pr" id="run">Start</button><button id="step">Step</button><button id="rst">Reset</button><button id="gen">สร้างดิสก์ใหม่</button>
+<label>ความเร็ว <input type="range" id="sp" min="10" max="400" step="10" value="120"></label>
+</div></div>
+
+<div class="cd"><h2>Disk</h2><div class="dk" id="dk"></div><div class="pg"><div id="pb"></div></div>
+<div class="fl" id="fl" style="margin-top:14px"></div></div>
+
+<div class="cd"><h2>สถานะปัจจุบัน</h2>
+<div class="g"><div><small>ขั้นที่ย้าย</small><b id="m1">0</b></div><div><small>block ที่เขียน (สะสม)</small><b id="m2">0</b></div><div><small>ไฟล์ที่ยังแตกเป็นชิ้น</small><b id="m3">0</b></div><div><small>ช่องว่างที่แยกเป็นก้อน</small><b id="m4">0</b></div></div></div>
+
+<div class="cd"><h2>เทียบทุกอัลกอริทึมบนดิสก์นี้</h2><div style="overflow-x:auto"><table id="cmp"></table></div>
+<p class="ds">การสลับ block สองตัวที่ใช้งานอยู่นับเป็นเขียน 2 ครั้ง ส่วนย้ายไปช่องว่างนับ 1 ครั้ง</p></div>
+</div>
+<script>
+const N=120,F=8,$=id=>document.getElementById(id);
+const AL={
+ seq:{n:'Sliding compaction',s:'รักษาลำดับ block เดิม',d:'เลื่อน block ที่ใช้งานทั้งหมดไปทางซ้ายตามลำดับเดิม รวมพื้นที่ว่างไว้ท้ายดิสก์ แต่ไฟล์แต่ละไฟล์ยังอาจแตกเป็นชิ้น'},
+ two:{n:'Two-pointer fill',s:'ย้ายน้อย ไม่รักษาลำดับ',d:'เอา block ท้ายสุดที่ใช้งานไปเติมช่องว่างซ้ายสุด ทำจนสองตัวชี้ชนกัน ย้ายน้อยและรวมช่องว่างได้ แต่ไม่สนใจว่า block ไหนเป็นของไฟล์ใด'},
+ file:{n:'File-contiguous',s:'ไฟล์ต่อเนื่องกันทุกไฟล์',d:'จัดให้แต่ละไฟล์อยู่ติดกัน เรียงตามตำแหน่งเริ่มต้นเดิมของไฟล์ ได้ผลดีที่สุดในเชิงโครงสร้าง แต่ต้องสลับ block มากกว่า'}
+};
+let kind='seq',d0,d,moves,mi,cost,timer,last=[],cnt;
+const col=f=>'hsl('+(f*47+150)%360+',62%,'+(matchMedia('(prefers-color-scheme:dark)').matches?'62%':'66%')+')';
+function gen(){
+  const ch=[];
+  for(let f=0;f<F;f++){let r=4+Math.floor(Math.random()*8);while(r>0){const c=Math.min(r,1+Math.floor(Math.random()*4));ch.push([f,c]);r-=c}}
+  ch.sort(()=>Math.random()-.5);
+  d0=Array(N).fill(null);let p=0;
+  for(const[f,c]of ch){p+=Math.floor(Math.random()*3);for(let i=0;i<c&&p<N;i++)d0[p++]=f}
+  cnt=Array(F).fill(0);d0.forEach(v=>{if(v!==null)cnt[v]++});
+  reset();
+}
+function metrics(a){
+  const ex=Array(F).fill(0);let fe=0,run=0,big=0;
+  a.forEach((v,i)=>{
+    if(v!==null){if(i===0||a[i-1]!==v)ex[v]++;run=0}
+    else{if(i===0||a[i-1]!==null)fe++;run++;big=Math.max(big,run)}
+  });
+  return{ex,frag:ex.filter(e=>e>1).length,fe,big};
+}
+function plan(k,arr){
+  const a=arr.slice(),m=[];let c=0;
+  const sw=(x,y)=>{m.push([x,y]);c+=(a[x]!==null&&a[y]!==null)?2:1;[a[x],a[y]]=[a[y],a[x]]};
+  if(k==='seq'){let p=0;for(let s=0;s<N;s++)if(a[s]!==null){if(s!==p)sw(p,s);p++}}
+  else if(k==='two'){let l=0,r=N-1;for(;;){while(l<N&&a[l]!==null)l++;while(r>=0&&a[r]===null)r--;if(l>=r)break;sw(l,r)}}
+  else{
+    const ord=[];a.forEach(v=>{if(v!==null&&!ord.includes(v))ord.push(v)});
+    const w=[];ord.forEach(f=>{for(let i=0;i<cnt[f];i++)w.push(f)});
+    for(let p=0;p<w.length;p++)if(a[p]!==w[p])sw(p,a.indexOf(w[p],p+1));
+  }
+  return{m,a,c};
+}
+function reset(){
+  pause();d=d0.slice();mi=0;cost=0;last=[];
+  moves=plan(kind,d0).m;render();table();
+}
+function tick(){
+  if(mi>=moves.length){pause();return}
+  const[x,y]=moves[mi++];cost+=(d[x]!==null&&d[y]!==null)?2:1;
+  [d[x],d[y]]=[d[y],d[x]];last=[x,y];render();
+  if(mi>=moves.length)pause();
+}
+function render(){
+  $('dk').innerHTML=d.map((v,i)=>'<div class="b'+(last.includes(i)?' hi':'')+'" style="'+(v!==null?'background:'+col(v):'')+'">'+(v!==null?String.fromCharCode(65+v):'')+'</div>').join('');
+  const m=metrics(d);
+  $('fl').innerHTML=cnt.map((c,f)=>'<span style="border-left-color:'+col(f)+'"><b>'+String.fromCharCode(65+f)+'</b> '+c+' block <i>'+m.ex[f]+' ส่วน</i></span>').join('');
+  $('m1').textContent=mi+' / '+moves.length;$('m2').textContent=cost;$('m3').textContent=m.frag;$('m4').textContent=m.fe;
+  $('pb').style.width=(moves.length?mi/moves.length*100:100)+'%';
+  $('al').innerHTML=Object.entries(AL).map(([k,v])=>'<button data-k="'+k+'" class="'+(k===kind?'on':'')+'">'+v.n+'<small>'+v.s+'</small></button>').join('');
+  $('ds').textContent=AL[kind].d;
+  $('run').textContent=timer?'Pause':(mi>=moves.length?'เสร็จแล้ว':'Start');
+}
+function table(){
+  const b=metrics(d0);
+  let h='<tr><th>อัลกอริทึม</th><th>block ที่เขียน</th><th>ไฟล์ที่ยังแตก</th><th>ช่องว่างแยกก้อน</th><th>ช่องว่างต่อเนื่องยาวสุด</th></tr>';
+  h+='<tr><td>ก่อนจัดเรียง</td><td>-</td><td>'+b.frag+'</td><td>'+b.fe+'</td><td>'+b.big+'</td></tr>';
+  for(const k in AL){const r=plan(k,d0),m=metrics(r.a);
+    h+='<tr><td>'+AL[k].n+'</td><td>'+r.c+'</td><td>'+m.frag+'</td><td>'+m.fe+'</td><td>'+m.big+'</td></tr>'}
+  $('cmp').innerHTML=h;
+}
+function pause(){clearInterval(timer);timer=null}
+function play(){pause();if(mi>=moves.length)return;timer=setInterval(tick,+$('sp').value);render()}
+$('run').onclick=()=>{timer?(pause(),render()):play()};
+$('step').onclick=()=>{pause();tick();render()};
+$('rst').onclick=reset;$('gen').onclick=gen;
+$('sp').oninput=()=>{if(timer)play()};
+$('al').onclick=e=>{const b=e.target.closest('button');if(b){kind=b.dataset.k;reset()}};
+gen();
+</script>
+</body>
+</html>
